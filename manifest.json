@@ -1,0 +1,12 @@
+{
+  "manifest_version": 2,
+  "name": "BlindHireHelper",
+  "description": "Josh Wais' BlindHireHelper",
+  "version": "0.1",
+  "content_scripts": [{
+    "matches": ["*://*/*"],
+    "include_globs": ["*://*.indeed.*/*"],
+    "js": ["content.js"],
+    "run_at": "document_end"
+  }]
+}
