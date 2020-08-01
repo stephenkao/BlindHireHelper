@@ -1,13 +1,20 @@
+const DEBUG = false
+
 const names = new Set();
 
-function redactNames() {
-  const namesRe = new RegExp(`(${[...names].join('|')})`, 'i');
+function log(msg) {
+  DEBUG && window.console.log(msg);
+}
 
-  const allNodes = document.getElementsByTagName('*');
+function redactNames(rootNode = document) {
+  const escapedNames = [...names].map(name => name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const namesRe = new RegExp(`(${escapedNames.join('|')})`, 'i');
+
+  const allNodes = rootNode.getElementsByTagName('*');
 
   [...allNodes].forEach((node) => {
     [...node.childNodes].forEach((childNode) => {
-      if (childNode.nodeType === 3) {
+      if (childNode.nodeType === 3) { // only text nodes
         const text = childNode.nodeValue;
         const replacedText = text.replace(namesRe, 'whatever');
         if (replacedText !== text) {
@@ -15,10 +22,11 @@ function redactNames() {
           newNode.style.color = 'black';
           newNode.style.backgroundColor = 'black';
           newNode.title = text;
+          newNode.dataset.redacted = true;
           newNode.onmouseover = () => newNode.style.backgroundColor = 'white';
           newNode.onmouseout = () => newNode.style.backgroundColor = 'black';
           newNode.innerHTML = text;
-          childNode.parentNode.replaceChild(newNode, childNode);
+          node.parentNode.replaceChild(newNode, node);
         }
       }
     });
@@ -32,33 +40,47 @@ const observer = new MutationObserver((mutations) => {
     [...mutation.addedNodes].forEach((candidateNode) => {
       if (!candidateNode || !candidateNode.classList) return;
 
-      console.log(candidateNode);
-
       if (candidateNode.classList.contains('hanselNamePlate-leftPanel-lastJobTitle')) {
-        // this panel usually loads first
-        names.add(candidateNode.parentNode.childNodes[0].textContent.trim());
+        // central panel with individual candidate information initial load
+
+        const { parentNode } = candidateNode;
+        const newName = parentNode.querySelector('h3').textContent.trim();
+        log('central panel, adding: ', newName);
+        names.add(newName);
 
         // remove email address
-        document.querySelector('.hanselNamePlate-leftPanel-additional').innerHTML = '';
+        parentNode.querySelector('.hanselNamePlate-leftPanel-additional').innerHTML = '';
 
-        redactNames();
+        redactNames(parentNode);
       } else if (candidateNode.classList.contains('hanselCandidateDetails')) {
-        redactNames();
+        // paginating between candidate detail panels
+
+        // remove email address
+        candidateNode.parentNode.querySelector('.hanselNamePlate-leftPanel-additional').innerHTML = '';
+
+        redactNames(candidateNode);
       } else if (candidateNode.classList.contains('HanselCandidateList') && !candidateNode.classList.contains('loading')) {
-        // then redact all other candidate names too
+        // sidebar with all candidates initial load
+
         [...candidateNode.querySelectorAll('.CandidateListItem-name')].forEach((nameNode) => {
-          //nameNode.style.display = 'none';
-          names.add(nameNode.textContent.trim());
+          const newName = nameNode.textContent.trim();
+          log('candidate list loaded, adding: ', newName);
+
+          names.add(newName);
         });
 
         // remove hover events disabling class
         document.querySelector('.CandidateListItem-disable-hover').classList.remove('.CandidateListItem-disable-hover');
 
-        redactNames();
+        redactNames(candidateNode);
       } else if (candidateNode.classList.contains('CandidateListItem')) {
-        names.add(candidateNode.textContent.trim());
+        // when clicking 'More' in candidate
 
-        redactNames();
+        const newName = candidateNode.querySelector('.CandidateListItem-name').textContent.trim();
+        log('paginating candidate list, adding: ', newName);
+
+        names.add(newName);
+        redactNames(candidateNode);
       }
     });
   });
