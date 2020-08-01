@@ -1,10 +1,19 @@
-const DEBUG = false
+
+const DEBUG = false;
 
 const names = new Set();
 
 function log(msg) {
   DEBUG && window.console.log(msg);
 }
+
+const styleNode = document.createElement('style');
+styleNode.id = 'gde_styles';
+document.head.appendChild(styleNode);
+const rule = '.gde_redacted, .noteContent { background-color: black; color: black; }';
+styleNode.sheet.insertRule(rule, 0);
+const hoverRule = '.gde_redacted:hover, .noteContent:hover { background-color: white; }';
+styleNode.sheet.insertRule(hoverRule, 1);
 
 function redactNames(rootNode = document) {
   const escapedNames = [...names].map(name => name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
@@ -17,14 +26,15 @@ function redactNames(rootNode = document) {
       if (childNode.nodeType === 3) { // only text nodes
         const text = childNode.nodeValue;
         const replacedText = text.replace(namesRe, 'whatever');
-        if (replacedText !== text) {
+        if (replacedText !== text && !node.dataset.redacted) {
           const newNode = document.createElement('span');
-          newNode.style.color = 'black';
-          newNode.style.backgroundColor = 'black';
+          //newNode.style.color = 'black';
+          //newNode.style.backgroundColor = 'black';
           newNode.title = text;
           newNode.dataset.redacted = true;
-          newNode.onmouseover = () => newNode.style.backgroundColor = 'white';
-          newNode.onmouseout = () => newNode.style.backgroundColor = 'black';
+          //newNode.onmouseover = () => newNode.style.backgroundColor = 'white';
+          //newNode.onmouseout = () => newNode.style.backgroundColor = 'black';
+          newNode.classList.add('gde_redacted');
           newNode.innerHTML = text;
           node.parentNode.replaceChild(newNode, node);
         }
